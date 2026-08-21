@@ -1,3 +1,7 @@
+import java.util.Properties
+
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -8,7 +12,7 @@ plugins {
 // Release signing material lives outside the repo (android/key.properties,
 // gitignored). CI injects it from secrets; without it, dev builds fall back
 // to debug keys so `flutter run --release` keeps working.
-val keystoreProperties = java.util.Properties().apply {
+val keystoreProperties = Properties().apply {
     val f = rootProject.file("key.properties")
     if (f.exists()) f.inputStream().use { load(it) }
 }
@@ -21,10 +25,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17
     }
 
     signingConfigs {
@@ -56,6 +56,12 @@ android {
                 signingConfigs.getByName("debug")
             }
         }
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
     }
 }
 

@@ -69,8 +69,8 @@ jobs:
         shell: pwsh
         run: |
           flutter pub get
-          flutter config --enable-windows-desktop
-          flutter build windows --release --build-name=("${env:GITHUB_REF_NAME}" -replace '^v','')
+          $version = "${env:GITHUB_REF_NAME}" -replace '^v',''
+          flutter build windows --release --build-name="$version"
 
       - name: Fetch Tor binaries
         shell: pwsh
