@@ -1,0 +1,41 @@
+Muse
+Copyright 2026 Darkstrike03
+
+This product includes software developed as part of the Muse project
+(https://github.com/Darkstrike03/muse).
+
+This product relies on software developed by the Tor Project
+(https://www.torproject.org/), distributed with these releases as the
+`tor-android` library (Android) and standalone Tor binaries (Windows).
+
+========================================================================
+Third-party components
+========================================================================
+
+Tor (The Onion Router) — Windows binaries
+  Copyright (c) The Tor Project, Inc.
+  Licensed under the BSD 3-Clause License and the Tor patent license.
+  https://gitlab.torproject.org/tpo/core/tor/-/raw/main/LICENSE
+
+tor-android / jtorctl — Android Tor service
+  Copyright (c) The Guardian Project
+  Licensed under the Apache License 2.0 / BSD 3-Clause License.
+  https://github.com/guardianproject/tor-android
+  https://github.com/guardianproject/jtorctl
+
+media_kit — playback engine
+  Copyright (c) 2022 Abdelrahman Abdelrazek
+  Licensed under the MIT License.
+
+Flutter — application framework
+  Copyright (c) 2014 The Chromium Authors / Google, Inc.
+  Licensed under the BSD 3-Clause License.
+
+Cinzel Decorative & Inter — typefaces
+  Copyright (c) Natanael Gama / Rasmus Andersson
+  Licensed under the SIL Open Font License, Version 1.1.
+  https://openfontlicense.org/
+
+Full license texts for every packaged dependency are collected in
+THIRD-PARTY-LICENSES.md. Complete source code is available at
+https://github.com/Darkstrike03/muse.
