@@ -1,0 +1,122 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      # Release signing material comes from repo secrets, never from git.
+      - name: Restore signing keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          test -n "$ANDROID_KEYSTORE_BASE64" || { echo "::error::ANDROID_KEYSTORE_BASE64 secret is not set"; exit 1; }
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/muse-release.jks
+          {
+            echo "storeFile=muse-release.jks"
+            echo "storePassword=$ANDROID_STORE_PASSWORD"
+            echo "keyAlias=$ANDROID_KEY_ALIAS"
+            echo "keyPassword=$ANDROID_KEY_PASSWORD"
+          } > android/key.properties
+
+      - name: Build split-per-ABI APKs
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          flutter build apk --release --split-per-abi \
+            --build-name="$VERSION" --build-number="${{ github.run_number }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apks
+          path: |
+            build/app/outputs/flutter-apks/*arm64-v8a*.apk
+            build/app/outputs/flutter-apks/*armeabi-v7a*.apk
+            build/app/outputs/flutter-apks/*x86_64*.apk
+          if-no-files-found: error
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Build Windows app
+        shell: pwsh
+        run: |
+          flutter pub get
+          flutter config --enable-windows-desktop
+          flutter build windows --release --build-name=("${env:GITHUB_REF_NAME}" -replace '^v','')
+
+      - name: Fetch Tor binaries
+        shell: pwsh
+        run: powershell -ExecutionPolicy Bypass -File tool/setup_tor.ps1
+
+      - name: Stage portable ZIP
+        shell: pwsh
+        run: |
+          $version = "${env:GITHUB_REF_NAME}" -replace '^v',''
+          $stage = "dist\portable\Muse"
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          Copy-Item -Path "build\windows\x64\runner\Release\*" -Destination $stage -Recurse
+          Copy-Item -Path "tor" -Destination "$stage\tor" -Recurse
+          Copy-Item -Path "LICENSE","NOTICE","THIRD-PARTY-LICENSES.md" -Destination $stage
+          Compress-Archive -Path $stage\* -DestinationPath "dist\muse-$version-portable.zip"
+
+      - name: Build Inno Setup installer
+        shell: pwsh
+        run: |
+          $version = "${env:GITHUB_REF_NAME}" -replace '^v',''
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=$version tool\installer.iss
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-bundles
+          path: dist/*
+          if-no-files-found: error
+
+  release:
+    needs: [build-android, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Flatten and generate checksums
+        run: |
+          mkdir -p release
+          find artifacts -type f \( -name '*.apk' -o -name '*.zip' -o -name '*.exe' \) -exec cp {} release/ \;
+          cd release
+          sha256sum * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: release/*
+          body_path: release/SHA256SUMS.txt
+          generate_release_notes: true
